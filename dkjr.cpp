@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
 			
 			afficherEchec(nbrVie);
 
-			nbrVie=0;
+			nbrVie++;
 
 
 	}while(nbrVie <3);
