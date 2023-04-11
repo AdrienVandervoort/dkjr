@@ -55,7 +55,7 @@ void* FctThreadScore(void *);
 void* FctThreadEnnemis(void *);
 void* FctThreadCorbeau(void *);
 void* FctThreadCroco(void *);
-void  SpawnShield();
+void  SpawnShield(void*);
 
 void initGrilleJeu();
 void setGrilleJeu(int l, int c, int type = VIDE, pthread_t tid = 0);
@@ -116,6 +116,7 @@ typedef struct
 int main(int argc, char* argv[])
 {
 	int evt;
+	
 
 	ouvrirFenetreGraphique();
 	initGrilleJeu();
@@ -141,10 +142,11 @@ int main(int argc, char* argv[])
 	{
 			pthread_create(&threadDKJr,NULL,FctThreadDKJr,NULL);//cree
 			pthread_join(threadDKJr,NULL);//att fin du threadDKJr
-			SpawnShield();
+			
+			
 			afficherEchec(nbrVie);
 
-			nbrVie++;
+			nbrVie=0;
 
 
 	}while(nbrVie <3);
@@ -152,6 +154,7 @@ int main(int argc, char* argv[])
 	pthread_join(threadEvenements,NULL);//att la fin du thread
 	pthread_key_delete(keySpec);//supprime la cle utilisé par sigusr1 pour corbeau
 
+	
 	
 
 
@@ -344,8 +347,9 @@ void* FctThreadDK(void *)
 	
 }
 void* FctThreadDKJr(void*){
+	pthread_cleanup_push(SpawnShield,0);
 
-
+	
 	sigset_t mask;
 	sigemptyset(&mask);
 	sigaddset(&mask,SIGQUIT);
@@ -545,20 +549,21 @@ void* FctThreadDKJr(void*){
 				if (positionDKJr>=3)
 				{
 					struct timespec time=timespec{0,500000000};
+
 					setGrilleJeu(1,positionDKJr);
 					effacerCarres(7,(positionDKJr*2)+7,2,2);
 
 					positionDKJr--;
 					if(positionDKJr==2 &&grilleJeu[0][1].type==CLE)
 						 {
+						 	
 						 	afficherDKJr(6,11,9);
-
 						 	nanosleep(&time,NULL);
 						 	effacerCarres(5,12,3,2);
-						 	SpawnShield();
 						 	afficherDKJr(6,11,10);
 						 	
 
+						 	//SpawnShield();
 						 	nanosleep(&time,NULL);
 
 						 	effacerCarres(3,11,3,2);
@@ -585,11 +590,12 @@ void* FctThreadDKJr(void*){
 						 	nanosleep(&time,NULL);
 
 						 	effacerCarres(6,10,2,3);
-
+						 	SpawnShield(NULL);
 						 	setGrilleJeu(3,1,DKJR,pthread_self());
 						 	afficherDKJr(11,9,1);
 						 	etatDKJr=LIBRE_BAS;
 						 	positionDKJr=1;
+						 	
 						 }
 						 else if(positionDKJr==2 &&grilleJeu[0][1].type==VIDE)
 						 {
@@ -598,8 +604,9 @@ void* FctThreadDKJr(void*){
 						 	nanosleep(&time,NULL);
 
 						 	effacerCarres(5,11,3,3);
-						 	afficherCage(4);
+						 	
 						 	afficherDKJr(6,(positionDKJr*2)+7,12);//ligne,colonne,img
+						 	afficherCage(4);
 
 						 	nanosleep(&time,NULL);
 						 	effacerCarres(6,(positionDKJr*2)+7,3,2);//ligne courrante,colonne courrante,dim
@@ -621,6 +628,7 @@ void* FctThreadDKJr(void*){
 						 	setGrilleJeu(1,positionDKJr,DKJR,pthread_self());
 						 	afficherDKJr(7,(positionDKJr*2)+7,((positionDKJr-1)%4)+1);
 						 }
+
 				}
 					
 				break;
@@ -723,8 +731,9 @@ void* FctThreadDKJr(void*){
 		pthread_mutex_unlock(&mutexEvenement);
 		pthread_mutex_unlock(&mutexGrilleJeu);		
 	}
-
+	
 	pthread_exit(0);
+	pthread_cleanup_pop(1);
 }
 
 
@@ -1103,36 +1112,18 @@ void HandlerSIGCHLD(int)
 	pthread_mutex_unlock(&mutexGrilleJeu);
 	pthread_exit(NULL);
 }
-void SpawnShield()
+void SpawnShield(void*)
 {
-	if(grilleJeu[2][0].type==CORBEAU)
+	for(int l=2;l<4;l++)
+	{
+		for(int c=0;c<4;c++)
 		{
-		printf("\nSIGUSR1 mort 2 0");
-		pthread_kill(grilleJeu[2][0].tid,SIGUSR1);
+			if(grilleJeu[l][c].type == CROCO)
+			pthread_kill(grilleJeu[l][c].tid,SIGUSR2);
+
+			if(grilleJeu[l][c].type == CORBEAU)
+			pthread_kill(grilleJeu[l][c].tid,SIGUSR1);
+
 		}
-	if(grilleJeu[2][1].type==CORBEAU)
-	{
-		printf("\nSIGUSR1 mort 2 1");
-		pthread_kill(grilleJeu[2][1].tid,SIGUSR1);
-	}
-	if(grilleJeu[2][2].type==CORBEAU)
-	{
-		printf("SIGUSR1 mort 2 2");
-		pthread_kill(grilleJeu[2][2].tid,SIGUSR1);
-	}
-	if(grilleJeu[3][1].type==CROCO)
-	{
-		printf("SIGUSR1 mort 3 1");
-		pthread_kill(grilleJeu[3][1].tid,SIGUSR2);
-	}
-	if(grilleJeu[3][2].type==CROCO)
-	{
-		printf("SIGUSR1 mort 3 2");
-		pthread_kill(grilleJeu[3][2].tid,SIGUSR2);
-	}
-	if(grilleJeu[3][3].type==CROCO)
-	{
-		printf("SIGUSR1 mort 3 3");
-		pthread_kill(grilleJeu[3][3].tid,SIGUSR2);
 	}
 }
